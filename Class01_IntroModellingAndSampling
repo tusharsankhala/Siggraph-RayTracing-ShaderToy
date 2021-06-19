@@ -1,0 +1,52 @@
+vec3 bgColor = vec3(0, 1, 1);
+float RADIUS = 0.3;
+
+float seed = 0.0;
+
+float random()
+{
+    return fract(sin(seed++) * 43758.5453123);
+}
+
+vec3 sample_function(in float x, in float y)
+{
+    // Disk: x*x + y*y = r*r;
+    float s = sqrt(x*x + y*y);
+    
+    if( s < RADIUS)
+        return vec3(0.8, 0.8, 0.8);        
+    else
+        return vec3(0.0, 0.0, 0.0);
+}
+
+int numSamples = 10;
+void mainImage( out vec4 fragColor, in vec2 fragCoord )
+{
+    // Fragcoords ranges from
+    // in x : 0.5 to iResolution.x - 0.5
+    // in y : 0.5 to iResolution.y - 0.5
+    // Pixel(0, 0) is a the bottom left of the corner.
+    
+    float width = iResolution.x;
+    float height = iResolution.y;
+        
+    vec3 samp = vec3(0, 0, 0);
+    seed = 0.0;
+    for(int i=0; i<numSamples; ++i)
+    {
+        float x = fragCoord.x - random() - 0.5;
+        float y = fragCoord.y - random() - 0.5; 
+        
+        // map (0.5, w-0.5) to (-1, 1).
+        // map (0.5, h-0.5) to (-1, 1).
+        x = (x / width) * 2.0 - 1.0;
+        y = (y / height) * 2.0 - 1.0;
+        
+        // account for non-square window.
+        float aspectRatio = width/height;
+        y /= aspectRatio;
+        samp += sample_function(x,y);
+    }
+    
+    fragColor = vec4(samp/float(numSamples), 1.0);
+}
