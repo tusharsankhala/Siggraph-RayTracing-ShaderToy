@@ -1,0 +1,124 @@
+vec3 bgColor = vec3(0, 0, 0);
+float RADIUS = 0.3;
+
+float seed = 0.0;
+
+// Sphere is defined by the center and the radius.
+struct Sphere
+{
+    float radius;
+    vec3 center;
+    vec3 color;
+};
+
+// Ray is defined by the origin and the 
+// direction.
+struct Ray
+{
+    vec3 origin;
+    vec3 direction;
+};
+
+float random()
+{
+    return fract(sin(seed++) * 43758.5453123);
+}
+
+vec3 sample_function(in float x, in float y)
+{
+    // Disk: x*x + y*y = r*r;
+    float s = sqrt(x*x + y*y);
+    
+    if( s < RADIUS)
+        return vec3(0.8, 0.8, 0.8);        
+    else
+        return vec3(0.0, 0.0, 0.0);
+}
+
+// Intersection function
+// Ray-Sphere intersection.
+float RaySphereIntersect(in Ray ray, in Sphere sphere)
+{
+    vec3 rayToSphere = ray.origin - sphere.center;
+    float b = dot(rayToSphere, ray.direction);
+    float c = dot(rayToSphere, rayToSphere) - (sphere.radius * sphere.radius);
+	float disc = b*b - c;
+    
+    // Initialize to a large value.
+    float t = 1000000.0;
+    if (disc > 0.0) {
+        t = -b - sqrt(disc);
+        if (t > 0.00001) {
+            return t;
+        }
+        t = -b + sqrt(disc);
+        if (t > 0.00001) {
+            return t;
+        }  
+    }
+    
+     return t;
+}
+
+// Creating Scene.
+Sphere spheres[4];
+
+void MakeScene()
+{
+    spheres[0] = Sphere(1.0f, vec3(5, 0, -16), vec3(1, 1, 0));
+    spheres[1] = Sphere(1.5, vec3(0, 0, -10), vec3(1, 0, 0));
+    spheres[2] = Sphere(12.0f, vec3(0, -14, -10), vec3(1, 1, 1));
+}
+
+int numSamples = 10;
+void mainImage( out vec4 fragColor, in vec2 fragCoord )
+{
+    // Fragcoords ranges from
+    // in x : 0.5 to iResolution.x - 0.5
+    // in y : 0.5 to iResolution.y - 0.5
+    // Pixel(0, 0) is a the bottom left of the corner.
+    MakeScene();
+    
+    vec3 rayOrigin = vec3(0.0f, 0.0f, 0.0f);
+    float screenDepth = -2.0f;
+    
+    float width = iResolution.x;
+    float height = iResolution.y;
+    
+    vec3 samp = vec3(0, 0, 0);
+    seed = 0.0;
+    for(int i=0; i<numSamples; ++i)
+    {
+        float x = fragCoord.x + random() - 0.5;
+        float y = fragCoord.y + random() - 0.5; 
+        
+        // map (0.5, w-0.5) to (-1, 1).
+        // map (0.5, h-0.5) to (-1, 1).
+        x = (x / width) * 2.0 - 1.0;
+        y = (y / height) * 2.0 - 1.0;
+        
+         // account for non-square window.
+        float aspectRatio = width/height;
+        y /= aspectRatio;
+                
+        vec3 rayDirection = normalize(vec3(x, y, screenDepth));
+        Ray ray = Ray(rayOrigin, rayDirection);
+        
+        for(int i=0; i<3; ++i)
+        {
+            Sphere sphere = spheres[i];
+
+            float t = RaySphereIntersect(ray, sphere);
+            if ( t < 1000000.0)
+            {
+                vec3 hit = ray.origin + t*ray.direction;
+                vec3 normal = normalize(hit - sphere.center);
+                float angle = dot(ray.direction, normal);
+
+                samp += abs(angle) * sphere.color;
+            }
+         }
+    }
+    
+    fragColor = vec4(samp/float(numSamples), 1.0);
+}
